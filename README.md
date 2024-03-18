@@ -19,12 +19,12 @@ MailGun File Mode
 
 ## Parameters
 - -config: The YAML configuration file to run the script (example inside examples/config_example.yaml)
-- -targets: A text file with the targets (recipients) that will receive the phishing email (example inside exmaples/targets_example.txt)
+- -targets: A text file with the targets (recipients) that will receive the phishing email (example inside examples/targets_example.txt)
 - -mode: Mode can be "template" (that will use a template file) or "file" (that will use a HTML or text file). This will set how the message body will be constructed
 - -template: The template name registered in MailGun (for "template" mode only)
 - -messageFile: The template file that will be sent as the email body (for "file" mode only)
 - -delay: Delay between each email in each thread (in seconds) - Default: 0
-- -threads: Number of threads that will
+- -threads: Number of threads to run the script
 
 ## Custom URL replacement
 In the case of having a custom URL for each target, you can provide them in the targets file in the following format
