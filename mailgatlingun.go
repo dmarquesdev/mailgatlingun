@@ -20,7 +20,7 @@ type Config struct {
 	Domain      string `yaml:"domain"`
 	Sender      string `yaml:"sender"`
 	Subject     string `yaml:"subject"`
-	PhishingURL string `yaml:"phishingUrl"`
+	PhishingURL string `yaml:"phishingUrl,omitempty"`
 	APIKey      string `yaml:"apiKey"`
 }
 
@@ -145,6 +145,19 @@ func loadConfig(path string) (Config, error) {
 	err = yaml.Unmarshal(data, &config)
 	if err != nil {
 		return config, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+	// Check for required parameters
+	if config.Domain == "" {
+		log.Fatal("Config error: 'domain' is a required parameter and cannot be empty.")
+	}
+	if config.Sender == "" {
+		log.Fatal("Config error: 'sender' is a required parameter and cannot be empty.")
+	}
+	if config.Subject == "" {
+		log.Fatal("Config error: 'subject' is a required parameter and cannot be empty.")
+	}
+	if config.APIKey == "" {
+		log.Fatal("Config error: 'apiKey' is a required parameter and cannot be empty.")
 	}
 	return config, nil
 }
