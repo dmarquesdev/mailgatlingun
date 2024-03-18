@@ -17,10 +17,11 @@ import (
 )
 
 type Config struct {
-	Domain  string `yaml:"domain"`
-	Sender  string `yaml:"sender"`
-	Subject string `yaml:"subject"`
-	APIKey  string `yaml:"apiKey"`
+	Domain      string `yaml:"domain"`
+	Sender      string `yaml:"sender"`
+	Subject     string `yaml:"subject"`
+	PhishingURL string `yaml:"phishingUrl"`
+	APIKey      string `yaml:"apiKey"`
 }
 
 func main() {
@@ -215,6 +216,8 @@ func sendEmailWithTemplate(mg mailgun.Mailgun, config Config, target [2]string, 
 
 	if customURL != "" {
 		message.AddTemplateVariable("URL", customURL)
+	} else if config.PhishingURL != "" {
+		message.AddTemplateVariable("URL", config.PhishingURL)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -229,6 +232,10 @@ func sendEmailWithTemplate(mg mailgun.Mailgun, config Config, target [2]string, 
 
 func sendEmailWithFile(mg mailgun.Mailgun, config Config, target [2]string, messageContent string, html bool) error {
 	recipient, customURL := target[0], target[1]
+	if customURL == "" {
+		customURL = config.PhishingURL
+	}
+
 	// Replace the {{URL}} placeholder with the custom URL, if provided
 	personalizedContent := strings.Replace(messageContent, "{{URL}}", customURL, -1)
 
