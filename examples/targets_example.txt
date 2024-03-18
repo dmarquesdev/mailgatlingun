@@ -1,0 +1,2 @@
+victim@acmecorp.com,https://myevilpage.com?user=victim
+john.doe@acmecorp.com,https://myevilpage.com?user=john.doe

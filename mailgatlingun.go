@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -49,7 +50,15 @@ func main() {
 		log.Fatalf("Error loading config: %v", err)
 	}
 
-	targets, err := loadTargets(*targetFilePath)
+	// Count the number of target lines to set the progress bar total
+	totalTargets, err := countLines(*targetFilePath)
+	if err != nil {
+		log.Fatalf("Failed to count lines in target file: %v", err)
+	}
+
+	targetsChan := make(chan [2]string)
+	go loadTargets(*targetFilePath, targetsChan)
+
 	if err != nil {
 		log.Fatalf("Error loading targets: %v", err)
 	}
@@ -65,7 +74,25 @@ func main() {
 
 	html := strings.HasSuffix(*messageFilePath, ".html")
 
-	sendEmails(config, targets, *threads, *delay, *mode, *templateName, messageContent, html)
+	sendEmails(config, targetsChan, *threads, *delay, *mode, *templateName, messageContent, html, totalTargets)
+}
+
+// countLines returns the number of lines in the given file.
+func countLines(filePath string) (int, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return 0, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	lineCount := 0
+	for scanner.Scan() {
+		if scanner.Text() != "" { // Count non-empty lines only
+			lineCount++
+		}
+	}
+	return lineCount, scanner.Err()
 }
 
 func loadConfig(path string) (Config, error) {
@@ -81,14 +108,19 @@ func loadConfig(path string) (Config, error) {
 	return config, nil
 }
 
-func loadTargets(path string) ([][2]string, error) {
-	var targets [][2]string
-	data, err := os.ReadFile(path)
+// loadTargets reads target entries from the given file path and sends them through a channel.
+func loadTargets(path string, targetsChan chan<- [2]string) {
+	defer close(targetsChan)
+
+	file, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read target file: %w", err)
+		log.Fatalf("Failed to open target file: %v", err)
 	}
-	lines := strings.Split(string(data), "\n")
-	for _, line := range lines {
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
 		if line == "" {
 			continue // Skip empty lines
 		}
@@ -96,21 +128,24 @@ func loadTargets(path string) ([][2]string, error) {
 		if len(parts) == 1 {
 			parts = append(parts, "") // No custom URL
 		}
-		targets = append(targets, [2]string{parts[0], parts[1]})
+		targetsChan <- [2]string{parts[0], parts[1]}
 	}
-	return targets, nil
+
+	if err := scanner.Err(); err != nil {
+		log.Fatalf("Error reading targets: %v", err)
+	}
 }
 
-func sendEmails(config Config, targets [][2]string, threads int, delay int, mode string, templateName string, messageContent string, html bool) {
+func sendEmails(config Config, targets <-chan [2]string, threads int, delay int, mode string, templateName string, messageContent string, html bool, totalTargets int) {
 	mg := mailgun.NewMailgun(config.Domain, config.APIKey)
 	var wg sync.WaitGroup
-	bar := pb.StartNew(len(targets))
+	bar := pb.StartNew(totalTargets)
 
 	for i := 0; i < threads; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			for _, target := range targets {
+			for target := range targets {
 				var err error
 				if mode == "file" {
 					err = sendEmailWithFile(mg, config, target, messageContent, html)
@@ -145,11 +180,10 @@ func sendEmailWithTemplate(mg mailgun.Mailgun, config Config, target [2]string, 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	resp, id, err := mg.Send(ctx, message)
+	_, _, err := mg.Send(ctx, message)
 	if err != nil {
 		return fmt.Errorf("mailgun send error: %w", err)
 	}
-	log.Printf("Sent: %s ID: %s", resp, id)
 	return nil
 }
 
@@ -166,10 +200,9 @@ func sendEmailWithFile(mg mailgun.Mailgun, config Config, target [2]string, mess
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	resp, id, err := mg.Send(ctx, message)
+	_, _, err := mg.Send(ctx, message)
 	if err != nil {
 		return fmt.Errorf("mailgun send error: %w", err)
 	}
-	log.Printf("Sent: %s ID: %s", resp, id)
 	return nil
 }

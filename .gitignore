@@ -18,3 +18,8 @@ Thumbs.db
 *.exe
 *.o
 *.so
+
+# Ignore config files that might be present in root folder
+/*.yaml
+/*.txt
+/*.html

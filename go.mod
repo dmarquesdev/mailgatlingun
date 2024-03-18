@@ -1,4 +1,4 @@
-module mailgatling
+module mailgatlingun
 
 go 1.22.1
 
