@@ -35,3 +35,5 @@ email@domain.com,https://mycustomurl.com
 ```
 MailGatlinGun will look for a `{{URL}}` placeholder inside the template (in both modes) and replace with the `https://mycustomurl.com` 
 in this example, giving the flexibility to send a custom URL for each target. This can be useful for JS Injection and tracking
+
+If Custom URL is not provided, the Phishing URL parameter will be used (read from the config YAML file).
