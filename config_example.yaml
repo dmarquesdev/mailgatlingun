@@ -1,0 +1,4 @@
+domain: "example.com"
+sender: "no-reply@example.com"
+subject: "Your Weekly Newsletter"
+apiKey: "key-1234567890abcdefg"

@@ -1,0 +1,1 @@
+# MailGatlingGun - A phishing mail sender using MailGun API
