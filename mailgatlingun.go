@@ -199,7 +199,15 @@ func sendEmails(config Config, targets <-chan [2]string, threads int, delay int,
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
+			isFirstEmail := true // Variable to track the first email
 			for target := range targets {
+				if !isFirstEmail {
+					// Apply delay before sending each email, except the first one
+					time.Sleep(time.Duration(delay) * time.Second)
+				} else {
+					// After the first email, mark isFirstEmail as false
+					isFirstEmail = false
+				}
 				var err error
 				if mode == "file" {
 					err = sendEmailWithFile(mg, config, target, messageContent, html)
@@ -213,7 +221,6 @@ func sendEmails(config Config, targets <-chan [2]string, threads int, delay int,
 					log.Printf("Email sent to %s", target[0])
 				}
 				bar.Increment()
-				time.Sleep(time.Duration(delay) * time.Second)
 			}
 		}()
 	}
