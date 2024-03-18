@@ -31,6 +31,8 @@ func main() {
 	mode := flag.String("mode", "template", "Operation mode: 'template' or 'file'")
 	templateName := flag.String("template", "", "Mailgun template name (required if mode is 'template')")
 	messageFilePath := flag.String("messageFile", "", "Path to the message file (required if mode is 'file')")
+	startTimeStr := flag.String("startTime", "", "Start time in 'YYYY-MM-DD HH:mm:ss' format")
+	timeZoneStr := flag.String("timeZone", "", "Timezone (e.g., 'EST', 'UTC'). Defaults to the OS timezone if not provided.")
 	flag.Parse()
 
 	// Checking required parameters based on the mode
@@ -74,7 +76,45 @@ func main() {
 
 	html := strings.HasSuffix(*messageFilePath, ".html")
 
+	var startTime time.Time
+	if *startTimeStr != "" {
+		// Parse the timezone
+		loc, err := parseTimeZone(*timeZoneStr)
+		if err != nil {
+			log.Fatalf("Invalid timezone: %v", err)
+		}
+
+		// Parse the start time in the specified timezone
+		layout := "2006-01-02 15:04:05"
+		startTime, err = time.ParseInLocation(layout, *startTimeStr, loc)
+		if err != nil {
+			log.Fatalf("Invalid start time format: %v. Required format is 'YYYY-MM-DD HH:mm:ss'.", err)
+		}
+
+		// Check if the specified start time is in the future
+		if time.Now().In(loc).After(startTime) {
+			log.Fatal("Start time must be in the future.")
+		}
+	} else {
+		startTime = time.Now() // Start immediately if no start time is provided
+	}
+
+	timeUntilStart := time.Until(startTime)
+	if timeUntilStart > 0 {
+		fmt.Printf("Waiting until the specified start time: %s (%s)\n", startTime, startTime.Location())
+		time.Sleep(timeUntilStart)
+	}
+
 	sendEmails(config, targetsChan, *threads, *delay, *mode, *templateName, messageContent, html, totalTargets)
+}
+
+// Function to get the location object based on the timeZoneStr.
+// If timeZoneStr is empty or invalid, it returns the local system timezone.
+func parseTimeZone(timeZoneStr string) (*time.Location, error) {
+	if timeZoneStr == "" {
+		return time.Local, nil // Use system local timezone
+	}
+	return time.LoadLocation(timeZoneStr) // Load the specified timezone
 }
 
 // countLines returns the number of lines in the given file.
