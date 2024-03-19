@@ -59,7 +59,7 @@ func main() {
 		log.Fatalf("Failed to count lines in target file: %v", err)
 	}
 
-	targetsChan := make(chan [2]string)
+	targetsChan := make(chan [3]string)
 	go loadTargets(*targetFilePath, targetsChan)
 
 	if err != nil {
@@ -163,7 +163,7 @@ func loadConfig(path string) (Config, error) {
 }
 
 // loadTargets reads target entries from the given file path and sends them through a channel.
-func loadTargets(path string, targetsChan chan<- [2]string) {
+func loadTargets(path string, targetsChan chan<- [3]string) {
 	defer close(targetsChan)
 
 	file, err := os.Open(path)
@@ -178,11 +178,13 @@ func loadTargets(path string, targetsChan chan<- [2]string) {
 		if line == "" {
 			continue // Skip empty lines
 		}
-		parts := strings.SplitN(line, ",", 2)
+		parts := strings.SplitN(line, ",", 3)
 		if len(parts) == 1 {
+			parts = append(parts, "", "") // No custom URL and no name
+		} else if len(parts) == 2 {
 			parts = append(parts, "") // No custom URL
 		}
-		targetsChan <- [2]string{parts[0], parts[1]}
+		targetsChan <- [3]string{parts[0], parts[1], parts[2]}
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -190,7 +192,7 @@ func loadTargets(path string, targetsChan chan<- [2]string) {
 	}
 }
 
-func sendEmails(config Config, targets <-chan [2]string, threads int, delay int, mode string, templateName string, messageContent string, html bool, totalTargets int) {
+func sendEmails(config Config, targets <-chan [3]string, threads int, delay int, mode string, templateName string, messageContent string, html bool, totalTargets int) {
 	mg := mailgun.NewMailgun(config.Domain, config.APIKey)
 	var wg sync.WaitGroup
 	bar := pb.StartNew(totalTargets)
@@ -229,10 +231,14 @@ func sendEmails(config Config, targets <-chan [2]string, threads int, delay int,
 	bar.Finish()
 }
 
-func sendEmailWithTemplate(mg mailgun.Mailgun, config Config, target [2]string, templateName string) error {
-	recipient, customURL := target[0], target[1]
+func sendEmailWithTemplate(mg mailgun.Mailgun, config Config, target [3]string, templateName string) error {
+	recipient, name, customURL := target[0], target[1], target[2]
 	message := mg.NewMessage(config.Sender, config.Subject, "", recipient)
 	message.SetTemplate(templateName)
+
+	if name != "" {
+		message.AddTemplateVariable("Name", name)
+	}
 
 	if customURL != "" {
 		message.AddTemplateVariable("URL", customURL)
@@ -250,14 +256,15 @@ func sendEmailWithTemplate(mg mailgun.Mailgun, config Config, target [2]string, 
 	return nil
 }
 
-func sendEmailWithFile(mg mailgun.Mailgun, config Config, target [2]string, messageContent string, html bool) error {
-	recipient, customURL := target[0], target[1]
+func sendEmailWithFile(mg mailgun.Mailgun, config Config, target [3]string, messageContent string, html bool) error {
+	recipient, name, customURL := target[0], target[1], target[2]
 	if customURL == "" {
 		customURL = config.PhishingURL
 	}
 
 	// Replace the {{URL}} placeholder with the custom URL, if provided
 	personalizedContent := strings.Replace(messageContent, "{{URL}}", customURL, -1)
+	personalizedContent = strings.Replace(personalizedContent, "{{Name}}", name, -1)
 
 	message := mg.NewMessage(config.Sender, config.Subject, personalizedContent, recipient)
 	if html {

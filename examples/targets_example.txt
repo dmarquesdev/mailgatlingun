@@ -1,2 +1,4 @@
-victim@acmecorp.com,https://myevilpage.com?user=victim
-john.doe@acmecorp.com,https://myevilpage.com?user=john.doe
+john.doe@acmecorp.com,John Doe,https://myevilpage.com?user=john.doe
+noname@acmecorp.com,,https://myevilpage.com?user=noname
+nourl@acmecorp.com,No URL,
+justemail@acmecorp.com

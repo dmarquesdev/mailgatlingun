@@ -28,12 +28,13 @@ MailGun File Mode
 - `-startTime`: Start time in 'YYYY-MM-DD HH:mm:ss' format. Starts immediately if not provided.
 - `-timeZone`: Timezone (e.g., 'EST', 'UTC'). Defaults to the OS timezone if not provided.
 
-## Custom URL replacement
-In the case of having a custom URL for each target, you can provide them in the targets file in the following format
+## Custom Variables Replacement
+In the case of having a name and custom URL for each target, you can provide them in the targets file in the following format
 ```
-email@domain.com,https://mycustomurl.com
+email@domain.com,Name,https://mycustomurl.com
 ```
-MailGatlinGun will look for a `{{URL}}` placeholder inside the template (in both modes) and replace with the `https://mycustomurl.com` 
-in this example, giving the flexibility to send a custom URL for each target. This can be useful for JS Injection and tracking
+MailGatlinGun will look for a `{{Name}}` and a `{{URL}}` placeholder inside the template (in both modes) and replace with the `Name` and `https://mycustomurl.com` in this example, giving the flexibility to send a custom URL for each target. This can be useful for JS Injection and tracking
 
 If Custom URL is not provided, the Phishing URL parameter will be used (read from the config YAML file).
+
+For more examples in this file format, please consult the `examples/targets_example.txt` file.
