@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -32,9 +33,30 @@ func main() {
 	mode := flag.String("mode", "template", "Operation mode: 'template' or 'file'")
 	templateName := flag.String("template", "", "Mailgun template name (required if mode is 'template')")
 	messageFilePath := flag.String("messageFile", "", "Path to the message file (required if mode is 'file')")
+	outputFile := flag.String("output", "", "Output file where the results will be saved (optional, output will also be shown on terminal)")
 	startTimeStr := flag.String("startTime", "", "Start time in 'YYYY-MM-DD HH:mm:ss' format")
 	timeZoneStr := flag.String("timeZone", "", "Timezone (e.g., 'EST', 'UTC'). Defaults to the OS timezone if not provided.")
 	flag.Parse()
+
+	// Setup the output destinations. By default, it's just stdout.
+	var outputs []io.Writer
+	outputs = append(outputs, os.Stdout)
+
+	// If an output file is specified, open/create it and add it to the outputs
+	if *outputFile != "" {
+		file, err := os.Create(*outputFile)
+		if err != nil {
+			log.Fatalf("Failed to create output file: %v", err)
+		}
+		defer file.Close()
+		outputs = append(outputs, file)
+	}
+
+	// Create a multi-writer to write to all outputs (stdout and potentially a file)
+	multiWriter := io.MultiWriter(outputs...)
+
+	// Set the log's output to the multiWriter
+	log.SetOutput(multiWriter)
 
 	// Checking required parameters based on the mode
 	if *mode == "file" && *messageFilePath == "" {
@@ -102,7 +124,7 @@ func main() {
 
 	timeUntilStart := time.Until(startTime)
 	if timeUntilStart > 0 {
-		fmt.Printf("Waiting until the specified start time: %s (%s)\n", startTime, startTime.Location())
+		log.Printf("Waiting until the specified start time: %s (%s)\n", startTime, startTime.Location())
 		time.Sleep(timeUntilStart)
 	}
 
@@ -246,6 +268,8 @@ func sendEmailWithTemplate(mg mailgun.Mailgun, config Config, target [3]string, 
 		message.AddTemplateVariable("URL", config.PhishingURL)
 	}
 
+	message.AddTemplateVariable("Email", recipient)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
@@ -265,6 +289,7 @@ func sendEmailWithFile(mg mailgun.Mailgun, config Config, target [3]string, mess
 	// Replace the {{URL}} placeholder with the custom URL, if provided
 	personalizedContent := strings.Replace(messageContent, "{{URL}}", customURL, -1)
 	personalizedContent = strings.Replace(personalizedContent, "{{Name}}", name, -1)
+	personalizedContent = strings.Replace(personalizedContent, "{{Email}}", recipient, -1)
 
 	message := mg.NewMessage(config.Sender, config.Subject, personalizedContent, recipient)
 	if html {

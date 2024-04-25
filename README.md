@@ -22,6 +22,7 @@ MailGun File Mode
 - `-targets`: A text file with the targets (recipients) that will receive the phishing email (example inside examples/targets_example.txt)
 - `-mode`: Mode can be "template" (that will use a template file) or "file" (that will use a HTML or text file). This will set how the message body will be constructed - Default: template
 - `-template`: The template name registered in MailGun (for "template" mode only)
+- `-output`: Output file where the script output will be saved (optional, output will also be shown on terminal)
 - `-messageFile`: The template file that will be sent as the email body (for "file" mode only)
 - `-delay`: Delay between each email in each thread (in seconds) - Default: 0
 - `-threads`: Number of threads to run the script. This will define how many emails are sent at once - Default: 1
